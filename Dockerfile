@@ -1,25 +1,26 @@
-# Start from a lightweight Python image
+# Use a small Python base image
 FROM python:3.11-slim
 
-# Set working directory
+# Prevent .pyc files, ensure output isn't buffered
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies first (cache layer)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app code
-COPY app.py .
+# Copy application package
+COPY app ./app
 
-# Expose port
+# Expose service port
 EXPOSE 8000
 
-# Environment variables (safe defaults)
-ENV APP_ENV=production \
-    APP_PORT=8000
+# Healthcheck: verify root returns OK
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+  CMD python -c "import urllib.request, sys; \
+    (urllib.request.urlopen('http://localhost:8000/').read()) or True" || exit 1
 
-# Healthcheck (is app alive?)
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://localhost:8000/ || exit 1
-
-# Default command
-CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run uvicorn as the container process
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
