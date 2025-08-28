@@ -39,7 +39,7 @@ jobs:
 
       # Run tests
       - name: Run tests
-        run: pytest -v
+        run: PYTHONPATH=. pytest -v
 
       # Build Docker image (locally)
       - name: Build Docker image
