@@ -1,8 +1,9 @@
+import os
 from fastapi import FastAPI
 
 app = FastAPI()
 
-
 @app.get("/")
 def read_root():
-    return {"message": "Hello DevOps 🚀"}
+    message = os.getenv("APP_MESSAGE", "Hello DevOps 🚀")
+    return {"message": message}

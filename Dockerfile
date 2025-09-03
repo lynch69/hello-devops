@@ -1,26 +1,30 @@
-# Use a small Python base image
-FROM python:3.11-slim
-
-# Prevent .pyc files, ensure output isn't buffered
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+# Stage 1: build & test
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# Install dependencies first (cache layer)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application package
-COPY app ./app
+COPY . .
 
-# Expose service port
+# optional: run tests in build stage
+# RUN pytest -v
+
+# Stage 2: runtime (production)
+FROM python:3.11-slim AS runtime
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir fastapi==0.111.0 uvicorn==0.30.1
+
+COPY app/ app/
+
 EXPOSE 8000
 
-# Healthcheck: verify root returns OK
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD python -c "import urllib.request, sys; \
-    (urllib.request.urlopen('http://localhost:8000/').read()) or True" || exit 1
+# ENTRYPOINT = always run uvicorn
+ENTRYPOINT ["uvicorn"]
 
-# Run uvicorn as the container process
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# CMD = default arguments (can override)
+CMD ["app.main:app", "--host", "0.0.0.0", "--port", "8000"]
